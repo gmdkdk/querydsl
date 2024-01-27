@@ -61,3 +61,31 @@ fetchCount(): count쿼리로 변경해서 count만 조회
 
 ---
 ##[2024.01.24]  
+기본적으로 sql문법과 너무 유사해서 한번씩만 써보면 익숙하게 사용 할 수 있을거 같다.
+
+```java
+@Test
+    public void aggregation() {
+        List<Tuple> result = queryFactory
+                .select(
+                        member.count(),
+                        member.age.sum(),
+                        member.age.avg(),
+                        member.age.max(),
+                        member.age.min()
+                )
+                .from(member)
+                .fetch();
+        Tuple tuple = result.get(0);
+        assertThat(tuple.get(member.count())).isEqualTo(4);
+        assertThat(tuple.get(member.age.sum())).isEqualTo(100);
+        assertThat(tuple.get(member.age.avg())).isEqualTo(25);
+        assertThat(tuple.get(member.age.max())).isEqualTo(40);
+        assertThat(tuple.get(member.age.min())).isEqualTo(10);
+    }
+```
+집계함수도 기존 sql을 알고 있다면 쉽게 사용할 수 있다.  
+반환 타입이 여러가지일 경우 Tuple을 사용 할 수 있다..  
+dto를 하나 생성 해 사용하는 것이 좋지 않을까 ?  
+---
+##[2024-01-27]
