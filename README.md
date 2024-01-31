@@ -156,3 +156,74 @@ List<UserDto> result = queryFactory
 ```
   
 ## [2024-01-28]
+@QueryProjection  
+dto의 생성자에 해당 애노테이션을 써주고 gradle > compileJava를 하면 dto의 Q파일이 생성된다.  
+```java
+List<MemberDto> result = queryFactory
+        .select(new QMemberDto(member.username, member.age))
+        .from(member)
+        .fetch();
+```
+사용법은 정말 간단하다.  
+Projection.construct()는 실행해봐야 오류를 잡을 수 있고, @QueryProjection은 실행 전에 잡을 수 있다.  
+@QueryProjection의 단점으로는 Q파일을 생성해야 하고 dto가 querydsl에 의존해야 한다.  
+  
+동적 쿼리는 BooleanBuilder와 다중 파라미터 사용으로 해결할 수 있다.  
+* BooleanBuilder 사용
+```java
+BooleanBuilder builder = new BooleanBuilder();
+        if(usernameCond != null) {
+            builder.and(member.username.eq(usernameCond));
+        }
+        
+        if(ageCond != null) {
+            builder.and(member.age.eq(ageCond));
+        }
+        
+        return queryFactory
+                .selectFrom(member)
+                .where(builder)
+                .fetch();
+    }
+```
+<br>
+  * 다중 파라미터 사용
+
+```java
+    public void dynamicQuery_WhereParam() {
+        String usernameParam = /*null*/"member1";
+        Integer ageParam = /*null*/10;
+
+        List<Member> result = searchMember2(usernameParam, ageParam);
+        assertThat(result.size()).isEqualTo(1);
+    }
+
+    private List<Member> searchMember2(String usernameCond, Integer ageCond) {
+        return queryFactory
+                .selectFrom(member)
+                .where(usernameEq(usernameCond), ageEq(ageCond))
+                .fetch();
+    }
+
+    private Predicate usernameEq(String usernameCond) {
+        if(usernameCond == null) return null;
+        return member.username.eq(usernameCond);
+    }
+
+    private Predicate ageEq(Integer ageCond) {
+        if(ageCond == null) return null;
+        return member.age.eq(ageCond);
+    }
+```
+<br>
+반환 타입을 BooleanExpression으로 하고 
+
+```java
+    private BooleanExpression allEq(String usernameCond, Integer ageCond) {
+        return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+```
+이런식으로 조합해서 사용 할 수도 있다.  
+yml파일을 쪼개 `spring.profiles.active` 속성을 test와 local로 설정하였다.  
+  
+##[2024-02-01]  
