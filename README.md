@@ -227,3 +227,71 @@ BooleanBuilder builder = new BooleanBuilder();
 yml파일을 쪼개 `spring.profiles.active` 속성을 test와 local로 설정하였다.  
   
 ##[2024-02-01]  
+* 사용자 정의 리포지토리  
+1. 사용자 정의 인터페이스 작성
+2. 사용자 정의 인터페이스 구현
+3. 스프링 데이터 리포지토리에 사용자 정의 인터페이스 상속
+
+```java
+public interface MemberRepositoryCustom {
+    List<MemberTeamDto> search(MemberSearchCondition condition);
+}
+```
+```java
+public class MemberRepositoryImpl implements MemberRepositoryCustom {
+
+    private final JPAQueryFactory queryFactory;
+
+    // 스프링 bean으로 등록되어 있다면 이렇게 써도 됨
+//    public MemberRepositoryImpl(JPAQueryFactory jpaQueryFactory) {
+//        this.jpaQueryFactory = jpaQueryFactory;
+//    }
+
+    public MemberRepositoryImpl(EntityManager em) {
+        this.queryFactory = new JPAQueryFactory(em);
+    }
+
+    @Override
+    public List<MemberTeamDto> search(MemberSearchCondition condition) {
+
+        return queryFactory
+                .select(new QMemberTeamDto(
+                        member.id.as("memberId"),
+                        member.username,
+                        member.age,
+                        team.id.as("teamId"),
+                        team.name.as("teamName")
+                ))
+                .from(member)
+                .leftJoin(member.team, team)
+                .where(
+                        usernameEq(condition.getUsername()),
+                        teamNameEq(condition.getTeamName()),
+                        ageGoe(condition.getAgeGoe()),
+                        ageLoe(condition.getAgeLoe())
+                )
+                .fetch();
+    }
+
+    private BooleanExpression usernameEq(String username) {
+        return hasText(username) ? member.username.eq(username) : null;
+    }
+
+    private BooleanExpression teamNameEq(String teamName) {
+        return hasText(teamName) ? team.name.eq(teamName) : null;
+    }
+
+    private BooleanExpression ageGoe(Integer ageGoe) {
+        return ageGoe != null ? member.age.goe(ageGoe) : null;
+    }
+
+    private BooleanExpression ageLoe(Integer ageLoe) {
+        return ageLoe != null ? member.age.loe(ageLoe) : null;
+    }
+}
+```
+```java
+public interface MemberRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
+    List<Member> findByUsername(String username);
+}
+```
